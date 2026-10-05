@@ -40,6 +40,50 @@ const PALETTE = [
   "#4ade80", // Green
 ];
 
+const MAX_POINTS = 60;
+const MAX_GROUPS = 40;
+
+// Large datasets are grouped and averaged so the chart stays readable and fast.
+function prepareSeries(data, xAxis, yAxis) {
+  if (data.length <= MAX_POINTS) {
+    return {
+      labels: data.map((row) => String(row[xAxis] ?? "")),
+      values: data.map((row) => {
+        const v = parseFloat(row[yAxis]);
+        return isNaN(v) ? 0 : v;
+      }),
+      note: null,
+    };
+  }
+
+  const isDate = /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(String(data[0][xAxis]));
+  const groups = new Map();
+  for (const row of data) {
+    const v = parseFloat(row[yAxis]);
+    if (isNaN(v)) continue;
+    const raw = String(row[xAxis] ?? "");
+    const key = isDate ? raw.slice(-4) : raw;
+    const g = groups.get(key) || { sum: 0, n: 0 };
+    g.sum += v;
+    g.n += 1;
+    groups.set(key, g);
+  }
+
+  let entries = [...groups].map(([k, g]) => ({ k, v: g.sum / g.n, n: g.n }));
+  if (isDate) {
+    entries.sort((a, b) => a.k.localeCompare(b.k));
+  } else {
+    entries.sort((a, b) => b.n - a.n);
+    entries = entries.slice(0, MAX_GROUPS);
+  }
+
+  return {
+    labels: entries.map((e) => e.k),
+    values: entries.map((e) => parseFloat(e.v.toFixed(3))),
+    note: `average ${yAxis} per ${isDate ? "year" : xAxis}, ${data.length.toLocaleString()} rows`,
+  };
+}
+
 export default function DataChart({ chartType, data, xAxis, yAxis }) {
   if (!data || data.length === 0 || !xAxis || !yAxis) {
     return (
@@ -49,11 +93,7 @@ export default function DataChart({ chartType, data, xAxis, yAxis }) {
     );
   }
 
-  const labels = data.map((row) => String(row[xAxis] ?? ""));
-  const rawValues = data.map((row) => {
-    const v = parseFloat(row[yAxis]);
-    return isNaN(v) ? 0 : v;
-  });
+  const { labels, values: rawValues, note } = prepareSeries(data, xAxis, yAxis);
 
   const chartData = {
     labels,
@@ -93,7 +133,7 @@ export default function DataChart({ chartType, data, xAxis, yAxis }) {
       },
       title: {
         display: true,
-        text: `${yAxis} by ${xAxis}`,
+        text: note ? `${yAxis} by ${xAxis} (${note})` : `${yAxis} by ${xAxis}`,
         color: "#f8fafc",
         font: { family: "'Inter', sans-serif", size: 15, weight: "600" },
         padding: { bottom: 16 },

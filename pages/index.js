@@ -15,6 +15,8 @@ const DataChart = dynamic(() => import("../components/DataChart"), {
   ),
 });
 
+const TABLE_ROW_LIMIT = 100;
+
 export default function Home() {
   const [currentDatasetKey, setCurrentDatasetKey] = useState("nasa_exoplanets");
   const [datasetName, setDatasetName] = useState(
@@ -199,6 +201,37 @@ export default function Home() {
     document.body.removeChild(link);
   };
 
+  // Load the full USGS significant earthquakes CSV (1965-2016) bundled in /public/data
+  const loadHistoricalUsgs = () => {
+    setChatMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: "⏳ Loading the USGS historical earthquake file (~2.4 MB)..." },
+    ]);
+    Papa.parse("/data/usgs_significant_earthquakes_1965_2016.csv", {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const rows = results.data;
+        setCurrentDatasetKey("usgs_historical");
+        setDatasetName("USGS Significant Earthquakes 1965–2016");
+        setDatasetSource("USGS / ISC-GEM (your uploaded CSV)");
+        setData(rows);
+        setXAxis("Date");
+        setYAxis("Magnitude");
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: `🌋 Loaded **${rows.length.toLocaleString()} earthquakes** with **${Object.keys(rows[0]).length} columns**. The chart averages magnitude per year; try Depth on the Y-axis or ask me about trends.`,
+          },
+        ]);
+      },
+      error: (err) => alert("Failed to load USGS file: " + err.message),
+    });
+  };
+
   // Trigger AI inquiry
   const sendAiQuestion = async (userPromptText) => {
     const question = userPromptText || inputPrompt;
@@ -368,6 +401,14 @@ export default function Home() {
                 {item.name}
               </button>
             ))}
+            <button
+              className={`${styles.sampleChip} ${
+                currentDatasetKey === "usgs_historical" ? styles.sampleChipActive : ""
+              }`}
+              onClick={loadHistoricalUsgs}
+            >
+              🌋 USGS Significant Earthquakes 1965–2016 (23,412 rows)
+            </button>
           </div>
         </section>
 
@@ -567,10 +608,12 @@ export default function Home() {
         <section className={styles.tableCard}>
           <div className={styles.controlHeader}>
             <div className={styles.sectionLabel}>
-              <span>📋</span> Scientific Telemetry Table ({data.length} observations)
+              <span>📋</span> Scientific Telemetry Table ({data.length.toLocaleString()} observations)
             </div>
             <div style={{ fontSize: "0.8rem", color: "#94a3b8" }}>
-              Full parameter breakdown
+              {data.length > TABLE_ROW_LIMIT
+                ? `Showing first ${TABLE_ROW_LIMIT} of ${data.length.toLocaleString()} rows`
+                : "Full parameter breakdown"}
             </div>
           </div>
 
@@ -585,7 +628,7 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {data.map((row, idx) => (
+                {data.slice(0, TABLE_ROW_LIMIT).map((row, idx) => (
                   <tr key={idx}>
                     <td style={{ color: "#64748b" }}>{idx + 1}</td>
                     {columns.map((col) => (
