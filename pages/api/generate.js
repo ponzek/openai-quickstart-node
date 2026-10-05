@@ -1,72 +1,70 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI();
-
-let chatHistory = [{ role: "system", content: "You are a helpful assistant." }];
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export default async function handler(req, res) {
-  const { method } = req;
+  if (req.method !== "POST") {
+    res.setHeader("Allow", ["POST"]);
+    return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
+  }
 
-  switch (method) {
-    case "POST":
-      if (req.query.endpoint === "chat") {
-        // Handle POST to /api/generate?endpoint=chat
-        const content = req.body.message;
-        chatHistory.push({ role: "user", content: content });
-        res.status(200).json({ success: true });
-      } else if (req.query.endpoint === "reset") {
-        // Handle POST to /api/generate?endpoint=reset
-        chatHistory = [
-          { role: "system", content: "You are a helpful assistant." },
-        ];
-        res.status(200).json({ success: true });
-      } else {
-        res.status(404).json({ error: "Not Found" });
-      }
-      break;
-    case "GET":
-      if (req.query.endpoint === "history") {
-        res.status(200).json(chatHistory);
-      } else if (req.query.endpoint === "stream") {
-        // Set headers for Server-Sent Events
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache");
-        res.setHeader("Connection", "keep-alive");
+  try {
+    const { message, datasetSummary, history } = req.body;
 
-        try {
-          const stream = await openai.beta.chat.completions.stream({
-            model: "gpt-3.5-turbo",
-            messages: chatHistory,
-            stream: true,
-          });
+    if (!message && (!history || history.length === 0)) {
+      return res.status(400).json({ error: "Message or history is required." });
+    }
 
-          for await (const chunk of stream) {
-            const message = chunk.choices[0]?.delta?.content || "";
-            res.write(`data: ${JSON.stringify(message)}\n\n`);
-          }
+    // Build the system prompt with dataset context if available
+    let systemPrompt = `You are DataPulse AI, an intelligent data science and visualization assistant created for Karina Ponze's Data Visualization application (Kean University CPS 5745).
+Your role is to help users understand their uploaded data, identify significant trends, calculate key metrics, suggest optimal charts, and explain statistical findings in clean, accessible English.`;
 
-          // After the stream ends, get the final chat completion
-          const chatCompletion = await stream.finalChatCompletion();
-        } catch (error) {
-          res.write(
-            "event: error\ndata: " +
-              JSON.stringify({ message: "Stream encountered an error" }) +
-              "\n\n"
-          );
+    if (datasetSummary) {
+      systemPrompt += `\n\n--- CURRENT DATASET CONTEXT ---
+Filename / Name: ${datasetSummary.name || "Custom Dataset"}
+Total Rows: ${datasetSummary.rowCount || 0}
+Total Columns: ${(datasetSummary.columns || []).join(", ")}
+Numeric Columns: ${(datasetSummary.numericColumns || []).join(", ") || "None"}
+Categorical Columns: ${(datasetSummary.categoricalColumns || []).join(", ") || "None"}
+Summary Statistics: ${JSON.stringify(datasetSummary.stats || {})}
+Sample Data (first few records):
+${JSON.stringify(datasetSummary.sampleRows || [], null, 2)}
+-------------------------------
+When answering questions about the data, reference actual column names, values, and trends from this dataset context. Format answers using markdown with bold highlights, bullet points, and clear sections.`;
+    }
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+    ];
+
+    if (Array.isArray(history)) {
+      // Append past user and assistant messages (excluding system)
+      for (const h of history) {
+        if (h.role === "user" || h.role === "assistant") {
+          messages.push({ role: h.role, content: h.content });
         }
-
-        // When the client closes the connection, we stop the stream
-        return new Promise((resolve) => {
-          req.on("close", () => {
-            resolve();
-          });
-        });
-      } else {
-        res.status(404).json({ error: "Not Found" });
       }
-      break;
-    default:
-      res.setHeader("Allow", ["GET", "POST"]);
-      res.status(405).end(`Method ${method} Not Allowed`);
+    }
+
+    if (message) {
+      messages.push({ role: "user", content: message });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 1000,
+    });
+
+    const reply = completion.choices[0]?.message?.content || "No response generated.";
+    return res.status(200).json({ success: true, reply });
+  } catch (error) {
+    console.error("OpenAI API error:", error);
+    return res.status(500).json({
+      error: error.message || "An error occurred while contacting OpenAI API.",
+    });
   }
 }
