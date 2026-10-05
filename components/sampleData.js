@@ -1,25 +1,26 @@
-// Catalog of the course datasets. Each entry points to a CSV served from /public/data.
+// Catalog of the course datasets. Each entry points to the original CSV filenames
+// copied into /public/data so they are included in local runs and Vercel deploys.
 export const SAMPLE_DATASETS = {
   jwst: {
-    name: "JWST Exoplanet Observations Summary",
+    name: "table_observations_summary.csv",
     source: "NASA Exoplanet Archive - JWST observations table",
-    file: "/data/jwst_observations_summary.csv",
+    file: "/data/table_observations_summary.csv",
     icon: "🪐",
     defaultX: "PL_NAME",
     defaultY: "OBSERVATION_DUR",
   },
   co2: {
-    name: "NOAA Mauna Loa Annual Mean CO2",
+    name: "co2_annmean_mlo.csv",
     source: "NOAA Global Monitoring Laboratory (co2_annmean_mlo)",
-    file: "/data/noaa_co2_annmean_mlo.csv",
+    file: "/data/co2_annmean_mlo.csv",
     icon: "📈",
     defaultX: "year",
     defaultY: "mean",
   },
   earthquakes: {
-    name: "USGS Significant Earthquakes 1965-2016",
+    name: "USGP database.csv",
     source: "USGS / ISC-GEM earthquake database",
-    file: "/data/usgs_earthquakes.csv",
+    file: "/data/USGP%20database.csv",
     icon: "🌋",
     defaultX: "Date",
     defaultY: "Magnitude",
