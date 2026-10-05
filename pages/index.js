@@ -175,6 +175,23 @@ export default function Home() {
     ]);
   };
 
+  // Handler to export/download active dataset as a CSV file
+  const downloadCsv = () => {
+    if (!data || data.length === 0) return;
+    const csvString = Papa.unparse(data);
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `${datasetName.toLowerCase().replace(/[^a-z0-9]/g, "_")}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Trigger AI inquiry
   const sendAiQuestion = async (userPromptText) => {
     const question = userPromptText || inputPrompt;
@@ -288,10 +305,18 @@ export default function Home() {
               <strong style={{ color: "#fff", marginLeft: 6 }}>{datasetName}</strong>
             </div>
 
-            {/* Custom file upload */}
+            {/* Custom file upload & download */}
             <div className={styles.uploadRow}>
+              <button
+                type="button"
+                className={styles.downloadBtn}
+                onClick={downloadCsv}
+                title="Download this dataset as a CSV file to your computer"
+              >
+                <span>📥 Download CSV</span>
+              </button>
               <label className={styles.uploadBtn}>
-                <span>⬆️ Upload Scientific CSV or JSON</span>
+                <span>⬆️ Upload CSV / JSON</span>
                 <input
                   type="file"
                   accept=".csv,.json"
