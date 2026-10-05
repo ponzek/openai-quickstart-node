@@ -16,11 +16,16 @@ const DataChart = dynamic(() => import("../components/DataChart"), {
 });
 
 export default function Home() {
-  const [currentDatasetKey, setCurrentDatasetKey] = useState("exoplanets");
-  const [datasetName, setDatasetName] = useState(SAMPLE_DATASETS.exoplanets.name);
-  const [data, setData] = useState(SAMPLE_DATASETS.exoplanets.data);
-  const [xAxis, setXAxis] = useState(SAMPLE_DATASETS.exoplanets.defaultX);
-  const [yAxis, setYAxis] = useState(SAMPLE_DATASETS.exoplanets.defaultY);
+  const [currentDatasetKey, setCurrentDatasetKey] = useState("nasa_exoplanets");
+  const [datasetName, setDatasetName] = useState(
+    SAMPLE_DATASETS.nasa_exoplanets.name
+  );
+  const [datasetSource, setDatasetSource] = useState(
+    SAMPLE_DATASETS.nasa_exoplanets.source
+  );
+  const [data, setData] = useState(SAMPLE_DATASETS.nasa_exoplanets.data);
+  const [xAxis, setXAxis] = useState(SAMPLE_DATASETS.nasa_exoplanets.defaultX);
+  const [yAxis, setYAxis] = useState(SAMPLE_DATASETS.nasa_exoplanets.defaultY);
   const [chartType, setChartType] = useState("bar"); // bar, line, area, doughnut
 
   // AI Chat state
@@ -29,7 +34,7 @@ export default function Home() {
     {
       role: "assistant",
       content:
-        "Greetings, Researcher! 🪐 Welcome to **CosmoPulse AI**.\n\nI have loaded the **James Webb Exoplanet Habitability Catalog**. You can plot stellar metrics across axes, upload your own scientific CSV/JSON files, or ask me to hypothesize, calculate physical properties, and detect astronomical anomalies!",
+        "Greetings! 🪐 Welcome to **CosmoPulse AI**.\n\nI have loaded verified empirical data from the **NASA Exoplanet Archive (Caltech/NASA)**. These are real astrophysical observations of confirmed exoplanets! You can also explore real **NOAA Mauna Loa Atmospheric CO2** records or **USGS Global Earthquakes**, upload your own scientific datasets, and ask me to compute correlations, detect anomalies, or evaluate trends.",
     },
   ]);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -88,6 +93,7 @@ export default function Home() {
     if (!sample) return;
     setCurrentDatasetKey(key);
     setDatasetName(sample.name);
+    setDatasetSource(sample.source);
     setData(sample.data);
     setXAxis(sample.defaultX);
     setYAxis(sample.defaultY);
@@ -96,7 +102,7 @@ export default function Home() {
       ...prev,
       {
         role: "assistant",
-        content: `🔬 Switched scientific domain to **${sample.name}** (${sample.data.length} observational records).\n*${sample.description}*\n\nReady for analysis!`,
+        content: `🔬 Switched dataset to **${sample.name}** (${sample.data.length} real measurements).\n*Source: ${sample.source}*\n\nReady for analysis!`,
       },
     ]);
   };
@@ -152,6 +158,7 @@ export default function Home() {
   const applyUploadedData = (name, rows) => {
     setCurrentDatasetKey("custom");
     setDatasetName(name);
+    setDatasetSource("User Uploaded File");
     setData(rows);
 
     const cols = Object.keys(rows[0] || {});
@@ -301,8 +308,23 @@ export default function Home() {
         <section className={styles.controlCard}>
           <div className={styles.controlHeader}>
             <div className={styles.sectionLabel}>
-              <span>🔬</span> Active Research Domain:{" "}
+              <span>🔬</span> Active Dataset:{" "}
               <strong style={{ color: "#fff", marginLeft: 6 }}>{datasetName}</strong>
+              {datasetSource && (
+                <span
+                  style={{
+                    fontSize: "0.78rem",
+                    color: "#38bdf8",
+                    background: "rgba(56, 189, 248, 0.12)",
+                    padding: "3px 8px",
+                    borderRadius: "6px",
+                    marginLeft: "10px",
+                    border: "1px solid rgba(56, 189, 248, 0.25)",
+                  }}
+                >
+                  ✓ {datasetSource}
+                </span>
+              )}
             </div>
 
             {/* Custom file upload & download */}
@@ -311,7 +333,7 @@ export default function Home() {
                 type="button"
                 className={styles.downloadBtn}
                 onClick={downloadCsv}
-                title="Download this dataset as a CSV file to your computer"
+                title="Download this real scientific dataset as a CSV file to your computer"
               >
                 <span>📥 Download CSV</span>
               </button>
@@ -330,7 +352,7 @@ export default function Home() {
           {/* Quick sample chips */}
           <div className={styles.sampleChips}>
             <span style={{ fontSize: "0.8rem", color: "#94a3b8", fontWeight: 600 }}>
-              Scientific Presets:
+              Real Scientific Datasets:
             </span>
             {Object.entries(SAMPLE_DATASETS).map(([key, item]) => (
               <button
@@ -340,10 +362,9 @@ export default function Home() {
                 }`}
                 onClick={() => handleSelectSample(key)}
               >
-                {key === "exoplanets" && "🪐 "}
-                {key === "genomics" && "🧬 "}
-                {key === "ocean" && "🌊 "}
-                {key === "quantum" && "⚛️ "}
+                {key === "nasa_exoplanets" && "🪐 "}
+                {key === "noaa_co2" && "📈 "}
+                {key === "usgs_earthquakes" && "🌋 "}
                 {item.name}
               </button>
             ))}
