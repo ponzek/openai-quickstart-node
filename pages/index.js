@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import Papa from "papaparse";
 import styles from "./index.module.css";
-import { SAMPLE_DATASETS } from "../components/sampleData";
+import { SAMPLE_DATASETS, DEFAULT_DATASET_KEY } from "../components/sampleData";
 
 // Dynamically import Chart to prevent SSR hydration errors with Canvas
 const DataChart = dynamic(() => import("../components/DataChart"), {
@@ -18,16 +18,12 @@ const DataChart = dynamic(() => import("../components/DataChart"), {
 const TABLE_ROW_LIMIT = 100;
 
 export default function Home() {
-  const [currentDatasetKey, setCurrentDatasetKey] = useState("nasa_exoplanets");
-  const [datasetName, setDatasetName] = useState(
-    SAMPLE_DATASETS.nasa_exoplanets.name
-  );
-  const [datasetSource, setDatasetSource] = useState(
-    SAMPLE_DATASETS.nasa_exoplanets.source
-  );
-  const [data, setData] = useState(SAMPLE_DATASETS.nasa_exoplanets.data);
-  const [xAxis, setXAxis] = useState(SAMPLE_DATASETS.nasa_exoplanets.defaultX);
-  const [yAxis, setYAxis] = useState(SAMPLE_DATASETS.nasa_exoplanets.defaultY);
+  const [currentDatasetKey, setCurrentDatasetKey] = useState(DEFAULT_DATASET_KEY);
+  const [datasetName, setDatasetName] = useState("Loading dataset...");
+  const [datasetSource, setDatasetSource] = useState("");
+  const [data, setData] = useState([]);
+  const [xAxis, setXAxis] = useState("");
+  const [yAxis, setYAxis] = useState("");
   const [chartType, setChartType] = useState("bar"); // bar, line, area, doughnut
 
   // AI Chat state
@@ -36,7 +32,7 @@ export default function Home() {
     {
       role: "assistant",
       content:
-        "Greetings! 🪐 Welcome to **CosmoPulse AI**.\n\nI have loaded verified empirical data from the **NASA Exoplanet Archive (Caltech/NASA)**. These are real astrophysical observations of confirmed exoplanets! You can also explore real **NOAA Mauna Loa Atmospheric CO2** records or **USGS Global Earthquakes**, upload your own scientific datasets, and ask me to compute correlations, detect anomalies, or evaluate trends.",
+        "Welcome to **CosmoPulse AI**.\n\nThree course datasets are available: the **JWST exoplanet observations summary**, **NOAA Mauna Loa annual CO2**, and the **USGS significant earthquakes 1965-2016** database. Pick one above or upload your own CSV/JSON, then ask me about trends, outliers, or correlations.",
     },
   ]);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -89,25 +85,44 @@ export default function Home() {
     }
   }, [chatMessages, isAiLoading]);
 
-  // Handler for sample dataset switch
-  const handleSelectSample = (key) => {
+  // Load one of the bundled CSV datasets from /public/data
+  const handleSelectSample = (key, announce = true) => {
     const sample = SAMPLE_DATASETS[key];
     if (!sample) return;
     setCurrentDatasetKey(key);
-    setDatasetName(sample.name);
-    setDatasetSource(sample.source);
-    setData(sample.data);
-    setXAxis(sample.defaultX);
-    setYAxis(sample.defaultY);
-
-    setChatMessages((prev) => [
-      ...prev,
-      {
-        role: "assistant",
-        content: `🔬 Switched dataset to **${sample.name}** (${sample.data.length} real measurements).\n*Source: ${sample.source}*\n\nReady for analysis!`,
+    setDatasetName(`Loading ${sample.name}...`);
+    Papa.parse(sample.file, {
+      download: true,
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      comments: "#",
+      complete: (results) => {
+        const rows = results.data;
+        setDatasetName(sample.name);
+        setDatasetSource(sample.source);
+        setData(rows);
+        setXAxis(sample.defaultX);
+        setYAxis(sample.defaultY);
+        if (announce) {
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              role: "assistant",
+              content: `Loaded **${sample.name}**: ${rows.length.toLocaleString()} rows, ${Object.keys(rows[0] || {}).length} columns.\n*Source: ${sample.source}*`,
+            },
+          ]);
+        }
       },
-    ]);
+      error: (err) => alert("Failed to load dataset: " + err.message),
+    });
   };
+
+  // Auto-load the default dataset when the page opens
+  useEffect(() => {
+    handleSelectSample(DEFAULT_DATASET_KEY, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handler for custom file upload (CSV or JSON)
   const handleFileUpload = (e) => {
@@ -130,6 +145,7 @@ export default function Home() {
         header: true,
         dynamicTyping: true,
         skipEmptyLines: true,
+        comments: "#",
         complete: (results) => {
           if (results.data && results.data.length > 0) {
             applyUploadedData(fileName, results.data);
@@ -199,37 +215,6 @@ export default function Home() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  // Load the full USGS significant earthquakes CSV (1965-2016) bundled in /public/data
-  const loadHistoricalUsgs = () => {
-    setChatMessages((prev) => [
-      ...prev,
-      { role: "assistant", content: "⏳ Loading the USGS historical earthquake file (~2.4 MB)..." },
-    ]);
-    Papa.parse("/data/usgs_significant_earthquakes_1965_2016.csv", {
-      download: true,
-      header: true,
-      dynamicTyping: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const rows = results.data;
-        setCurrentDatasetKey("usgs_historical");
-        setDatasetName("USGS Significant Earthquakes 1965–2016");
-        setDatasetSource("USGS / ISC-GEM (your uploaded CSV)");
-        setData(rows);
-        setXAxis("Date");
-        setYAxis("Magnitude");
-        setChatMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            content: `🌋 Loaded **${rows.length.toLocaleString()} earthquakes** with **${Object.keys(rows[0]).length} columns**. The chart averages magnitude per year; try Depth on the Y-axis or ask me about trends.`,
-          },
-        ]);
-      },
-      error: (err) => alert("Failed to load USGS file: " + err.message),
-    });
   };
 
   // Trigger AI inquiry
@@ -385,7 +370,7 @@ export default function Home() {
           {/* Quick sample chips */}
           <div className={styles.sampleChips}>
             <span style={{ fontSize: "0.8rem", color: "#94a3b8", fontWeight: 600 }}>
-              Real Scientific Datasets:
+              Course Datasets:
             </span>
             {Object.entries(SAMPLE_DATASETS).map(([key, item]) => (
               <button
@@ -395,20 +380,9 @@ export default function Home() {
                 }`}
                 onClick={() => handleSelectSample(key)}
               >
-                {key === "nasa_exoplanets" && "🪐 "}
-                {key === "noaa_co2" && "📈 "}
-                {key === "usgs_earthquakes" && "🌋 "}
-                {item.name}
+                {item.icon} {item.name}
               </button>
             ))}
-            <button
-              className={`${styles.sampleChip} ${
-                currentDatasetKey === "usgs_historical" ? styles.sampleChipActive : ""
-              }`}
-              onClick={loadHistoricalUsgs}
-            >
-              🌋 USGS Significant Earthquakes 1965–2016 (23,412 rows)
-            </button>
           </div>
         </section>
 

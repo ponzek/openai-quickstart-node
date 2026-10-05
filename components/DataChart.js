@@ -40,7 +40,7 @@ const PALETTE = [
   "#4ade80", // Green
 ];
 
-const MAX_POINTS = 60;
+const MAX_POINTS = 100;
 const MAX_GROUPS = 40;
 
 // Large datasets are grouped and averaged so the chart stays readable and fast.
