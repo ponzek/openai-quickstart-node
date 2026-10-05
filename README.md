@@ -1,44 +1,49 @@
-# OpenAI API Quickstart - Node.js example app
+# DataPulse AI
 
-This is an example pet name generator app used in the OpenAI API [quickstart tutorial](https://platform.openai.com/docs/quickstart). It uses the [Next.js](https://nextjs.org/) framework with [React](https://reactjs.org/). Check out the tutorial or follow the instructions below to get set up.
+Scientific data visualization and AI analysis studio for Kean University CPS 5745.
 
-![Text box that says name my pet with an icon of a dog](https://user-images.githubusercontent.com/10623307/213887080-b2bc4645-7fdb-4dbd-ae42-efce00d0dc29.png)
+## What It Does
 
+- Loads three bundled course datasets: JWST exoplanet observations, NOAA Mauna Loa annual CO2, and USGS significant earthquakes.
+- Supports custom CSV or JSON uploads.
+- Builds interactive bar, line, area, and doughnut charts.
+- Lets users choose X and Y axes from the active dataset.
+- Shows summary statistics and a raw data preview table.
+- Provides an AI analysis chat for trends, outliers, hypotheses, and chart recommendations.
+- Falls back to local deterministic analysis if the OpenAI API key is missing or unavailable, so the demo still works.
 
-## Setup
+## Run Locally
 
-1. If you don’t have Node.js installed, [install it from here](https://nodejs.org/en/) (Node.js version >= 14.6.0 required)
+```bash
+npm install
+npm run dev
+```
 
-2. Clone this repository
+Open the local URL printed by Next.js, usually:
 
-3. Navigate into the project directory
+```text
+http://localhost:3000
+```
 
-   ```bash
-   $ cd openai-quickstart-node
-   ```
+If that port is already taken, Next.js may use another port such as:
 
-4. Install the requirements
+```text
+http://localhost:3001
+```
 
-   ```bash
-   $ npm install
-   ```
+## OpenAI Setup
 
-5. Make a copy of the example environment variables file
+Create a `.env` file in this folder:
 
-   On Linux systems: 
-   ```bash
-   $ cp .env.example .env
-   ```
-   On Windows:
-   ```powershell
-   $ copy .env.example .env
-   ```
-6. Add your [API key](https://platform.openai.com/account/api-keys) to the newly created `.env` file
+```text
+OPENAI_API_KEY=your_api_key_here
+```
 
-7. Run the app
+The app can run without the key, but live AI responses require it.
 
-   ```bash
-   $ npm run dev
-   ```
+## Build Check
 
-You should now be able to access the app at [http://localhost:3000](http://localhost:3000)! For the full context behind this example app, check out the [tutorial](https://platform.openai.com/docs/quickstart).
+```bash
+npm run build
+```
+

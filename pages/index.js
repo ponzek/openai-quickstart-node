@@ -17,6 +17,20 @@ const DataChart = dynamic(() => import("../components/DataChart"), {
 
 const TABLE_ROW_LIMIT = 100;
 
+function renderInlineMarkdown(text) {
+  const parts = String(text).split(/(\*\*[^*]+\*\*|`[^`]+`|\n)/g);
+  return parts.map((part, index) => {
+    if (part === "\n") return <br key={index} />;
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return <code key={index}>{part.slice(1, -1)}</code>;
+    }
+    return part;
+  });
+}
+
 export default function Home() {
   const [currentDatasetKey, setCurrentDatasetKey] = useState(DEFAULT_DATASET_KEY);
   const [datasetName, setDatasetName] = useState("Loading dataset...");
@@ -32,7 +46,7 @@ export default function Home() {
     {
       role: "assistant",
       content:
-        "Welcome to **CosmoPulse AI**.\n\nThree course datasets are available: the **JWST exoplanet observations summary**, **NOAA Mauna Loa annual CO2**, and the **USGS significant earthquakes 1965-2016** database. Pick one above or upload your own CSV/JSON, then ask me about trends, outliers, or correlations.",
+        "Welcome to **DataPulse AI**.\n\nThree course datasets are available: the **JWST exoplanet observations summary**, **NOAA Mauna Loa annual CO2**, and the **USGS significant earthquakes 1965-2016** database. Pick one above or upload your own CSV/JSON, then ask about trends, outliers, or correlations.",
     },
   ]);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -195,7 +209,7 @@ export default function Home() {
       ...prev,
       {
         role: "assistant",
-        content: `📡 Ingested dataset **${name}** containing **${rows.length} observation points** across **${cols.length} variables**!\n\nParameters: \`${cols.join(", ")}\`.\nTelemetry visualizer & AI inference engine updated.`,
+        content: `Ingested dataset **${name}** containing **${rows.length} observation points** across **${cols.length} variables**.\n\nParameters: \`${cols.join(", ")}\`.\nVisualizer and AI analysis context updated.`,
       },
     ]);
   };
@@ -284,7 +298,7 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <Head>
-        <title>CosmoPulse AI | Scientific Data Studio by Karina Ponze</title>
+        <title>DataPulse AI | Scientific Data Studio by Karina Ponze</title>
         <meta
           name="description"
           content="AI-powered Scientific Data Visualization and Statistical Telemetry Studio by Karina Ponze"
@@ -297,7 +311,7 @@ export default function Home() {
         <div className={styles.navBrand}>
           <div className={styles.navLogo}>🪐</div>
           <div>
-            <h1 className={styles.navTitle}>CosmoPulse AI</h1>
+            <h1 className={styles.navTitle}>DataPulse AI</h1>
             <div className={styles.navAuthor}>
               Scientific Data Visualization • <span>Karina Ponze</span> | Kean CPS 5745
             </div>
@@ -314,11 +328,11 @@ export default function Home() {
         {/* HERO TITLE */}
         <section className={styles.hero}>
           <h2 className={styles.heroTitle}>
-            Scientific <span className={styles.heroGradient}>Data Telemetry</span> & AI Studio
+            Scientific <span className={styles.heroGradient}>Data Visualization</span> & AI Studio
           </h2>
           <p className={styles.heroSubtitle}>
-            Explore astrophysics, CRISPR genomics, hydrothermal ecosystems, and subatomic physics.
-            Upload custom empirical datasets (CSV/JSON), plot dynamic charts, and collaborate with AI for scientific discovery.
+            Explore real course datasets from NASA, NOAA, and USGS. Upload custom CSV or JSON files,
+            build dynamic charts, inspect the raw table, and use AI-assisted analysis to explain patterns.
           </p>
         </section>
 
@@ -539,7 +553,7 @@ export default function Home() {
                       : styles.assistantBubble
                   }`}
                 >
-                  {msg.content}
+                  {renderInlineMarkdown(msg.content)}
                 </div>
               ))}
               {isAiLoading && (
@@ -619,7 +633,7 @@ export default function Home() {
       {/* FOOTER */}
       <footer className={styles.footer}>
         <div>
-          <strong>CosmoPulse AI</strong> • Designed and Engineered by{" "}
+          <strong>DataPulse AI</strong> • Designed and Engineered by{" "}
           <strong>Karina Ponze</strong>
         </div>
         <div>Kean University | CPS 5745 — Advanced Programming & AI Integration</div>

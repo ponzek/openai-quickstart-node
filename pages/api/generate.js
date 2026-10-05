@@ -1,8 +1,39 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const hasApiKey = Boolean(process.env.OPENAI_API_KEY);
+const openai = hasApiKey
+  ? new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    })
+  : null;
+
+function toNumber(value) {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function localDatasetInsight(message, datasetSummary = {}) {
+  const stats = datasetSummary.stats || {};
+  const rows = datasetSummary.sampleRows || [];
+  const metric = stats.activeMetric || datasetSummary.activeY || "the selected metric";
+  const numericColumns = datasetSummary.numericColumns || [];
+  const columns = datasetSummary.columns || [];
+
+  const values = rows
+    .map((row) => toNumber(row[metric]))
+    .filter((value) => value !== null);
+
+  const sampleTrend =
+    values.length >= 2
+      ? values[values.length - 1] > values[0]
+        ? "The visible sample trends upward across the first records."
+        : values[values.length - 1] < values[0]
+        ? "The visible sample trends downward across the first records."
+        : "The visible sample stays roughly flat across the first records."
+      : "The selected metric needs more numeric sample values before a trend can be estimated.";
+
+  return `**Local analysis mode**\n\nThe OpenAI API is not configured or did not respond, so I generated a deterministic summary from the dataset metadata already loaded in the app.\n\n**Dataset:** ${datasetSummary.name || "Current dataset"}\n\n**Shape:** ${Number(datasetSummary.rowCount || 0).toLocaleString()} rows and ${columns.length} columns.\n\n**Selected view:** ${datasetSummary.activeY || metric} by ${datasetSummary.activeX || "the selected x-axis"}.\n\n**Key statistics for ${metric}:** mean ${stats.mean ?? "n/a"}, minimum ${stats.min ?? "n/a"}, maximum ${stats.max ?? "n/a"}.\n\n**Quick read:** ${sampleTrend}\n\n**Useful next questions:** compare ${numericColumns.slice(0, 3).join(", ") || "the numeric fields"}, switch chart types, and look for outliers near the minimum and maximum values.\n\n**Your question:** ${message || "No specific question provided."}`;
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -15,6 +46,14 @@ export default async function handler(req, res) {
 
     if (!message && (!history || history.length === 0)) {
       return res.status(400).json({ error: "Message or history is required." });
+    }
+
+    if (!hasApiKey) {
+      return res.status(200).json({
+        success: true,
+        reply: localDatasetInsight(message, datasetSummary),
+        fallback: true,
+      });
     }
 
     // Build the system prompt with dataset context if available
@@ -63,8 +102,10 @@ When answering questions about the data, reference actual column names, values, 
     return res.status(200).json({ success: true, reply });
   } catch (error) {
     console.error("OpenAI API error:", error);
-    return res.status(500).json({
-      error: error.message || "An error occurred while contacting OpenAI API.",
+    return res.status(200).json({
+      success: true,
+      reply: localDatasetInsight(req.body?.message, req.body?.datasetSummary),
+      fallback: true,
     });
   }
 }
